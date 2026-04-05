@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Checkout</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .hidden { display: none; }
+        .text-gradient { background: linear-gradient(135deg, #2563eb 0%, #a855f7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .premium-btn { transition: all 0.3s ease-in-out; }
+        .premium-btn:hover { box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.4), 0 8px 10px -6px rgba(168, 85, 247, 0.3); transform: translateY(-1px); }
+    </style>
+</head>
+<body class="bg-gradient-to-tr from-slate-100 via-sky-50 to-indigo-50 flex items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white rounded-3xl shadow-2xl shadow-gray-200/70 max-w-md w-full p-8 md:p-10 border border-gray-100">
+        <div class="text-center mb-10">
+            <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-violet-600 text-white rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-blue-500/20">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            </div>
+            <h2 id="display-title" class="text-2xl font-extrabold text-gray-900 tracking-tight">Secure Checkout</h2>
+            <p class="text-gray-500 mt-2 text-lg">Total to pay: <span id="display-price" class="font-extrabold text-gradient">₹0</span></p>
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 pl-1">Your Email (For Delivery)</label>
+            <input type="email" id="user-email" placeholder="you@example.com" required class="w-full px-5 py-4 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none transition-all placeholder:text-gray-300 mb-4">
+        </div>
+
+        <div class="p-1.5 mb-8 bg-gray-100/70 rounded-2xl flex space-x-1 border border-gray-200/50">
+            <button onclick="switchMethod('card')" id="tab-card" class="flex-1 py-3 rounded-xl bg-white shadow-md shadow-gray-200 text-sm font-semibold text-gray-900 transition-all duration-300">Card / UPI</button>
+            <button onclick="switchMethod('crypto')" id="tab-crypto" class="flex-1 py-3 rounded-xl text-sm font-medium text-gray-600 hover:text-gray-900 transition-all duration-300">Crypto</button>
+        </div>
+
+        <div id="sec-card" class="payment-method text-center py-4">
+            <p class="text-sm text-gray-600">You will be redirected to secure Razorpay gateway.</p>
+        </div>
+
+        <div id="sec-crypto" class="payment-method hidden text-center">
+            <div class="p-5 bg-gray-50/50 border border-gray-100 rounded-2xl relative">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Send Exactly</p>
+                <p class="text-2xl font-bold text-gray-900 mb-4"><span id="crypto-price">0.00</span> <span class="text-gray-500 text-lg">USDT (TRC20)</span></p>
+                <div class="bg-white p-3 border rounded-lg shadow-inner mb-2"><p class="text-sm font-mono text-gray-700 break-all">TFj5...[Dummy_Address]...x9Q</p></div>
+            </div>
+        </div>
+
+        <button onclick="processPayment()" class="premium-btn w-full mt-10 bg-gradient-to-r from-blue-600 to-violet-600 text-white font-bold py-4 rounded-2xl text-lg shadow-lg shadow-blue-500/30">
+            Pay <span id="btn-price">₹0</span>
+        </button>
+    </div>
+
+    <script>
+        let currentProduct = { id: '', price: 0, name: '' };
+        let activeMethod = 'card';
+
+        window.onload = function() {
+            const savedData = localStorage.getItem('checkoutData');
+            if(savedData) {
+                currentProduct = JSON.parse(savedData);
+                document.getElementById('display-title').innerText = currentProduct.name;
+                document.getElementById('display-price').innerText = "₹" + currentProduct.price.toLocaleString('en-IN');
+                document.getElementById('btn-price').innerText = "₹" + currentProduct.price.toLocaleString('en-IN');
+                document.getElementById('crypto-price').innerText = (currentProduct.price / 85).toFixed(2);
+            } else {
+                window.location.href = 'index.html';
+            }
+        };
+
+        function switchMethod(method) {
+            activeMethod = method;
+            document.querySelectorAll('.payment-method').forEach(el => el.classList.add('hidden'));
+            ['card', 'crypto'].forEach(id => {
+                const tab = document.getElementById('tab-' + id);
+                tab.classList.remove('bg-white', 'shadow-md', 'shadow-gray-200', 'font-semibold', 'text-gray-900');
+                tab.classList.add('text-gray-600', 'font-medium');
+            });
+            document.getElementById('sec-' + method).classList.remove('hidden');
+            const activeTab = document.getElementById('tab-' + method);
+            activeTab.classList.add('bg-white', 'shadow-md', 'shadow-gray-200', 'font-semibold', 'text-gray-900');
+        }
+
+        function processPayment() {
+            const email = document.getElementById('user-email').value;
+            if(!email) { alert("Please enter your email!"); return; }
+
+            if(activeMethod === 'card') {
+                var options = {
+                    "key": "YOUR_RAZORPAY_KEY_ID", 
+                    "amount": currentProduct.price * 100,
+                    "currency": "INR",
+                    "name": "Software Store",
+                    "description": currentProduct.name,
+                    "handler": function (response){
+                        // Redirect to success page on success
+                        window.location.href = "success.html?payment_id=" + response.razorpay_payment_id;
+                    },
+                    "prefill": { "email": email },
+                    "theme": { "color": "#2563eb" }
+                };
+                var rzp1 = new Razorpay(options);
+                rzp1.on('payment.failed', function (response){
+                    // Redirect to failed page on failure
+                    window.location.href = "failed.html";
+                });
+                rzp1.open();
+            } else {
+                alert("Crypto verification pending.");
+            }
+        }
+    </script>
+</body>
+</html>
